@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comparação de parâmetros — novo modelo × NEWAVE</title>
+<style>/*__ESTILOS__*/</style>
+</head>
+<body>
+<header><div class="limite"><p class="sobretitulo">PAR(p)-A · comparação de parâmetros armazenados</p><h1>Novo modelo × NEWAVE</h1><p id="identificacao"></p></div></header>
+<main class="limite">
+  <section class="filtros" aria-label="Filtros de todas as abas">
+    <label class="busca">Buscar usina por nome ou ID<input id="busca" type="search" placeholder="Todas as usinas · digite para buscar" autocomplete="off"></label>
+    <label>De<select id="inicio" aria-label="Mês inicial"></select></label>
+    <label>Até<select id="fim" aria-label="Mês final"></select></label>
+    <button id="limpar" type="button" class="secundario">Limpar filtros</button>
+    <p id="escopo" role="status" aria-live="polite"></p>
+  </section>
+  <nav class="abas" aria-label="Comparações" role="tablist">
+    <button id="aba-geral" role="tab" aria-controls="conteudo" data-tab="geral" aria-selected="true">Visão geral</button>
+    <button id="aba-ordem" role="tab" aria-controls="conteudo" data-tab="ordem" aria-selected="false" tabindex="-1">Ordem PARP</button>
+    <button id="aba-mensais" role="tab" aria-controls="conteudo" data-tab="mensais" aria-selected="false" tabindex="-1">Coeficientes mensais</button>
+    <button id="aba-anual" role="tab" aria-controls="conteudo" data-tab="anual" aria-selected="false" tabindex="-1">Coeficiente anual</button>
+    <button id="aba-estatisticas" role="tab" aria-controls="conteudo" data-tab="estatisticas" aria-selected="false" tabindex="-1">Médias e desvios padrão</button>
+  </nav>
+  <p class="legenda"><span class="selo dentro">Dentro da tolerância</span> diferença absoluta ≤ tolerância <span class="selo fora">Fora da tolerância</span> diferença absoluta &gt; tolerância <span class="selo sc">sc</span> lag ativo em apenas um modelo</p>
+  <p id="configuracao-tolerancias" class="nota" hidden></p>
+  <div id="conteudo" role="tabpanel" aria-labelledby="aba-geral"></div>
+  <details class="metodo"><summary>Como interpretar as tabelas</summary>
+    <p>A diferença é |novo modelo − NEWAVE|. Os resultados foram calculados antes da geração deste arquivo. Busca, classificação e datas alteram apenas a exibição. Não há gráficos nem dependências de internet.</p>
+    <p>Uma combinação é uma usina em um mês/ano. Cada combinação contém vários parâmetros. Os resumos contam comparações de parâmetros; uma combinação pode ter mais de uma diferença fora da tolerância. A concordância de parâmetros não é um teste estatístico.</p>
+    <p>A ordem é comparada exatamente. Lags ativos comuns são comparados mesmo com ordens diferentes. Um lag ativo em só um modelo recebe <strong>sc</strong>, sem ser substituído por zero; lags inativos nos dois não entram nas tabelas. Zero em um lag ativo é um valor válido.</p>
+    <p id="metodo-tolerancias"></p>
+    <p>O perfil do NEWAVE enriquecido v2 usa três algarismos significativos nos coeficientes e duas casas decimais nas médias e desvios. Os valores do novo modelo são doubles nativos. A correspondência usa o nome único da usina e o mesmo mês e ano. Os identificadores são conferidos internamente; as tabelas exibem apenas a usina e o mês/ano para identificar cada combinação.</p>
+    <p>Clique em um título de coluna para alternar a classificação. Números usam vírgula decimal e nenhum separador de milhar. Passe o cursor sobre um valor para consultar sua representação completa.</p>
+  </details>
+  <footer id="rodape"></footer>
+</main>
+<noscript><p>Ative o JavaScript do navegador para consultar as tabelas deste relatório local.</p></noscript>
+<script id="dados" type="application/json">__DADOS_JSON__</script>
+<script>/*__INTERACAO__*/</script>
+</body>
+</html>
