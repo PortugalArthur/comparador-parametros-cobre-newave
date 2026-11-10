@@ -2,6 +2,12 @@
 
 Implementado em 30/10/2026, na pasta independente `COMPARADOR_PARAMETROS_COBRE_NEWAVE`.
 
+**Atualização de 08/11/2026:** o pareamento continua validando o horizonte completo,
+mas as comparações e contagens agora usam usina/mês do ano, após exigir igualdade
+exata entre os anos em cada fonte. O [plano de consolidação mensal](PLANO_COMPARACAO_MENSAL_SEM_REPETICAO_ANUAL.md)
+prevalece sobre as descrições anteriores de linhas e totais por usina/estágio.
+Todas as grandezas e as regras numéricas permanecem.
+
 ## Objetivo e separação
 
 Criar um programa independente do avaliador estatístico, em uma pasta própria na Área de Trabalho, com um `.bat` de execução. Não alterar o avaliador existente, os geradores nem os parquets de origem.
@@ -29,21 +35,52 @@ Para os parquets atuais são 12 campos, incluindo os seis coeficientes mensais. 
 
 ## Diferença e tolerância
 
-Exibir a diferença absoluta: `abs(novo_modelo - NEWAVE)`.
+Regra atualizada em 09/11/2026, por determinação do usuário. Exibir a diferença
+absoluta `abs(novo_modelo - NEWAVE)`, preservando os valores originais.
 
-A ordem é inteira e sua comparação é exata. Para os coeficientes mensais e o coeficiente anual, usar tolerância absoluta equivalente à **unidade inteira de precisão do valor menos preciso**, conforme ajuste solicitado em 30/10/2026. Fixar uma tolerância por tipo de coeficiente para todo o relatório, considerando os dois modelos e todos os dados, antes de qualquer filtro. Todos os lags compartilham a tolerância do tipo “coeficientes mensais”.
+A ordem é inteira e sua comparação é exata. Para cada coeficiente mensal e anual,
+usar **0,001 × 10^e**, com `e` do formato NEWAVE `0.XXXE±YY`. A tolerância é
+individual por usina, mês e coeficiente; não utilizar a maior unidade de outro
+valor. Exemplos: `0.393E+00` usa 0,001; `0.393E-01` usa 0,0001;
+`0.105E+01` usa 0,01. Para zero ativo, o perfil `0.000E+00` implica 0,001.
+Coeficiente ausente no NEWAVE não recebe tolerância nem valor substituto.
 
-Para as quatro médias e desvios (anuais e mensais), a regra atual é **tolerância(usina, estágio, campo) = x/100 × |valor NEWAVE(usina, estágio, campo)|**. O usuário escolhe um único percentual x no mesmo quadro em que seleciona os arquivos, antes de gerar o HTML. O campo é obrigatório, não tem valor inicial automático, aceita ponto ou vírgula decimal e lembra o último valor explicitamente utilizado. Na linha de comando, usar `--percentual-estatisticas`. Aceitar percentuais finitos não negativos; x = 0 implica comparação exata. NEWAVE zero implica tolerância zero, sem piso de arredondamento. O módulo do NEWAVE garante um limite não negativo também para médias negativas.
+O esquema NEWAVE enriquecido versão 2 preserva os coeficientes provenientes de
+três algarismos significativos. O Parquet não conserva zeros finais nem a notação
+original; não contar casas decimais do float. Para valor não nulo, reconstruir
+a unidade como `10 ** (Decimal(str(abs(valor))).adjusted() - 2)`.
+Um perfil não reconhecido deve bloquear a comparação.
 
-O percentual é único, mas a tolerância absoluta de médias e desvios muda por usina, mês/ano e parâmetro. Ela é calculada antes da geração, gravada por linha e exibida em m³/s na coluna Tolerância. O percentual escolhido e a fórmula devem aparecer no HTML. Busca, classificação e intervalo de datas não alteram os limites calculados. Relatórios anteriores permanecem com o critério registrado na geração original; a nova regra só é aplicada depois que o usuário informar o percentual e gerar um novo HTML.
+Para médias e desvios mensais e anuais, usar **0,01 m³/s fixo**, inclusive para
+referência zero, sem percentual nem dependência da magnitude ou sinal. Remover
+o campo percentual da janela e o argumento CLI `--percentual-estatisticas`.
+Preferências antigas de percentual não afetam o cálculo. Os dois modos aplicam
+o mesmo limite fixo às quatro grandezas.
 
-Não inferir a precisão contando casas na conversão de um float para texto: o parquet não preserva zeros finais nem a notação original. No esquema NEWAVE enriquecido versão 2, os coeficientes de primeira e terceira linhas do PARPVAZ foram lidos de notação científica com três algarismos significativos; médias e desvios foram impressos com duas casas decimais. Para coeficiente zero, o formato `0.000E+00` tem unidade 0,001. Para coeficiente não nulo, a unidade é `10 ** (floor(log10(abs(valor))) - 2)`. Por exemplo, `0.393E+00` implica tolerância 0,001, mas `0.105E+01` implica 0,01; prevalece a maior unidade observada no tipo inteiro. No novo modelo, os parâmetros são nativos `float64`; considerar a resolução de armazenamento, sem presumir um arredondamento decimal inexistente.
+Na comparação novo × novo, os coeficientes continuam usando o limite global por
+tipo da resolução float64 das duas fontes; não atribuir precisão NEWAVE a uma
+fonte COBRE. Médias e desvios usam 0,01 m³/s também nesse modo.
 
-Exibir no relatório as tolerâncias fixas dos coeficientes, a regra percentual de médias/desvios, as unidades e os fundamentos de cada critério. A precisão de impressão das médias e desvios não impõe um piso ao percentual escolhido. Um perfil NEWAVE não reconhecido deve impedir a comparação, em vez de inventar uma precisão. Comparar diferenças no domínio decimal das representações dos valores para respeitar o limite inclusivo: diferença igual à tolerância está **dentro da tolerância**.
+Gravar o limite efetivo de cada comparação no resultado e na coluna Tolerância.
+A Visão geral deve identificar as fórmulas, unidades e referência de impressão.
+Diferença igual ao limite é aprovada: comparar com `Decimal(str(...))` antes da
+geração, sem arredondar os valores para mascarar divergências. Filtros não
+recalculam limites. Relatórios anteriores preservam o critério de sua geração.
 
 ## Ordens diferentes e `sc`
 
-Comparar todos os lags ativos comuns mesmo quando as ordens ajustadas diferirem. Um lag ativo em somente um modelo será `sc` (sem comparação); mostrar seu valor disponível e o motivo. Nunca substituir lag inativo por zero. Um coeficiente ativo cujo valor é zero deve continuar sendo comparado. Lags inativos nos dois modelos não geram linhas nas tabelas nem entram nas contagens.
+Regra de 09/11/2026: os coeficientes AR mensais só são comparados quando as
+ordens ajustadas da mesma usina/mês forem iguais. Com ordens diferentes,
+todos os lags ativos em pelo menos uma fonte recebem `sc`, inclusive os comuns
+e mesmo quando seus valores forem iguais ou zero. Preservar os coeficientes
+de cada fonte nas respectivas colunas; diferença e tolerância ficam `None`.
+O motivo deve informar as duas ordens. Não calcular a diferença ou o limite
+nesses casos, nem reutilizar uma tolerância global no HTML.
+
+Lags inativos nos dois modelos não geram linhas nem contagens. Os `sc` ativos
+continuam incluídos nos reprovados e nas taxas, sem dupla contagem. A ordem é
+comparada exatamente e reprova quando diferente. O coeficiente anual, médias
+e desvios mantêm suas próprias comparações. A regra vale nos dois modos.
 
 ## Erros de consistência
 
@@ -89,7 +126,7 @@ Testar pareamento com IDs distintos, virada de ano e início fora de janeiro; bl
 
 - 21 testes automatizados passaram, cobrindo as regras de consistência, pareamento, diferenças/tolerâncias, lags, independência do HTML e preservação da saída anterior em caso de falha.
 - Executado com os parquets reais e os decks atuais do novo modelo e do NEWAVE: 159 usinas, 72 meses (01/2026–12/2031), 11448 pares usina–mês; todas as 22896000 linhas de cada parquet foram conferidas antes da consolidação.
-- Resultado inicial, antes dos ajustes de tolerância: 87630 comparações de parâmetros, sendo 33696 dentro e 53934 fora da tolerância; 2742 lags ativos em somente um modelo classificados como `sc`. Inicialmente a ordem tinha tolerância zero e todos os demais tipos tinham 0,005. A revisão seguinte passou os coeficientes para 0,01 e ainda manteve médias/desvios em 0,005. A regra atual para médias/desvios é percentual, definida na seção acima.
+- Resultado inicial, antes dos ajustes de tolerância: 87630 comparações de parâmetros, sendo 33696 dentro e 53934 fora da tolerância; 2742 lags ativos em somente um modelo classificados como `sc`. Inicialmente a ordem tinha tolerância zero e todos os demais tipos tinham 0,005. A revisão seguinte passou os coeficientes para 0,01 e ainda manteve médias/desvios em 0,005. A regra vigente de 09/11/2026 para médias/desvios é 0,01 m³/s fixo, definida na seção acima; os números deste item são históricos.
 - Conferidos no navegador: cinco abas sem gráficos, ordenação numérica nos dois sentidos, paginação, busca por nome e ID, busca vazia, filtro compartilhado por mês/ano, limpeza dos filtros e motivos de `sc`. Não houve erros ou avisos no console do navegador.
 - `.bat` conferido com a opção de ajuda da linha de comando.
 - Relatório inicial: `relatorios/comparacao_parametros_atual.html`, aproximadamente 4,6 MB. Evidências: `outputs/verificacao/resultado.json` e `outputs/verificacao/visao_geral.png`.

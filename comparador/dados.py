@@ -210,6 +210,35 @@ def conferir_deck_newave(pasta, fonte):
         raise ErroConsistencia("Datas do parquet NEWAVE incompatíveis com o horizonte de dger.dat.")
 
 
+def consolidar_meses(fonte):
+    """Conserva o valor original somente após conferir todos os anos, sem tolerância."""
+    mensais, ocorrencias, problemas = {}, {}, []
+    for (hid, sid), valores in sorted(fonte.parametros.items(), key=lambda r: fonte.datas[r[0][1]]):
+        data = fonte.datas[sid]
+        chave = hid, data.month
+        ocorrencias[chave] = ocorrencias.get(chave, 0) + 1
+        if chave not in mensais:
+            mensais[chave] = (hid, sid, valores)
+            continue
+        _, anterior, base = mensais[chave]
+        for campo in fonte.colunas:
+            if valores[campo] != base[campo]:
+                problemas.append(
+                    f"Usina {fonte.nomes[hid]} (ID {hid}), mês {data.month:02d}, {campo}: "
+                    f"{fonte.datas[anterior]:%m/%Y} = {base[campo]!r}; {data:%m/%Y} = {valores[campo]!r}.")
+    if problemas:
+        raise ErroConsistencia(
+            f"{fonte.modelo} — {fonte.caminho}: parâmetros variam entre anos "
+            f"({len(problemas)} divergência(s)). Consolidação mensal bloqueada. Exemplos:\n"
+            + "\n".join(problemas[:20]))
+    validacao = dict(constantes_entre_anos=True, conjuntos=len(mensais),
+                     grupos_com_repeticao=sum(n > 1 for n in ocorrencias.values()),
+                     grupos_sem_repeticao=sum(n == 1 for n in ocorrencias.values()),
+                     anos_por_mes={str(m): sorted({d.year for d in fonte.datas.values() if d.month == m})
+                                   for m in sorted({d.month for d in fonte.datas.values()})})
+    return mensais, validacao
+
+
 def parear(novo, newave):
     def indexar(fonte):
         return {(normalizar(fonte.nomes[h]), fonte.datas[s]): (h, s, valores)
